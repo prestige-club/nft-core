@@ -1,0 +1,12 @@
+artifacts/
+cache/
+migrations/
+node_modules/
+typechain/
+package-lock.json
+truffle-config.js
+
+*.txt
+secrets.json
+*.docx
+*.pdf

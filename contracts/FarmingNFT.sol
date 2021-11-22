@@ -30,16 +30,18 @@ contract FarmingNFT is ClubNFT {
         totalShares[asset] += amount;
         data.shares = amount;
 
+        //asset.transferFrom(msg.sender, this, amount) is already executed in super function
         connector.invest(amount);
 
     }
 
     function withdrawRewards(uint256 _tokenId) public {
 
-        INFTConnector connector = INFTConnector(connectors[asset]);
+        FarmingData storage data = farmingData[_tokenId];
+        INFTConnector connector = INFTConnector(connectors[data.asset]);
         uint256 rewardsPerShare = connector.totalRewardsPerShare();
-        FarmingData storage data = farmingData[tokenId];
-        uint256 amount = (rewardsPerShare - alreadyWithdrawnPerShare) * data.shares;
+        uint256 amount = (rewardsPerShare - data.alreadyWithdrawnPerShare) * data.shares;
+        data.alreadyWithdrawnPerShare = rewardsPerShare;
         _withdraw(data.asset, amount);
 
     }
@@ -54,12 +56,13 @@ contract FarmingNFT is ClubNFT {
 
             uint256 tokenId = this.tokenOfOwnerByIndex(msg.sender, i);
             FarmingData storage data = farmingData[tokenId];
-            sum += (rewardsPerShare - alreadyWithdrawnPerShare) * data.shares;
+            sum += (rewardsPerShare - data.alreadyWithdrawnPerShare) * data.shares;
+            data.alreadyWithdrawnPerShare = rewardsPerShare;
         }
-        _withdraw(asset, amount);
+        _withdraw(asset, sum);
     }
 
-    function _withdraw(uint256 asset, uint256 amount) internal {
+    function _withdraw(address asset, uint256 amount) internal {
         INFTConnector connector = INFTConnector(connectors[asset]);
         connector.withdraw(amount, msg.sender);
     }
@@ -83,11 +86,11 @@ contract FarmingNFT is ClubNFT {
 
         INFTConnector connector = INFTConnector(_connector);
         uint256 balance = IERC20(asset).balanceOf(address(this));
-        uitn256 shares = totalShares[asset];
+        uint256 shares = totalShares[asset];
         IERC20(asset).approve(_connector, ~uint(0));
         connector.migrate(shares, balance - shares);
         
-        connectors[asset] = connector;
+        connectors[asset] = _connector;
     }
 
     function setConnector(address asset, address connector) external onlyOwner {
